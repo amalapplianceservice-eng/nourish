@@ -1,9 +1,9 @@
 // Offline support: cache the app shell; network requests to food/AI APIs are never cached.
-const CACHE = 'nourish-v2';
+const CACHE = 'nourish-v3';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'vendor/preact-htm.js', 'vendor/barcode-detector.js', 'vendor/zxing_reader.wasm',
-  'js/app.js', 'js/store.js', 'js/foods.js', 'js/foods-data.js', 'js/api.js', 'js/ui.js',
+  'js/app.js', 'js/store.js', 'js/i18n.js', 'js/foods.js', 'js/foods-data.js', 'js/foods-i18n.js', 'js/api.js', 'js/ui.js',
   'js/diary.js', 'js/add.js', 'js/detail.js', 'js/ai.js', 'js/create.js',
   'js/progress.js', 'js/settings.js', 'js/goals.js', 'js/scanner.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon.png',
@@ -22,11 +22,12 @@ self.addEventListener('activate', (event) => {
 });
 
 // Network-first for the app's own files (so updates show up), falling back to cache when offline.
+// `no-cache` revalidates with the server so a fresh deploy never mixes old and new modules.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-cache' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(event.request, copy));

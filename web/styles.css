@@ -366,3 +366,8 @@ textarea.field { resize: none; min-height: 112px; line-height: 1.4; }
 .toast .icon { width: 18px; height: 18px; color: var(--accent); stroke-width: 3; }
 .install-tip { display: flex; gap: 12px; align-items: center; }
 .install-tip img { width: 44px; height: 44px; border-radius: 11px; }
+
+/* ---------- Language menu (onboarding) ---------- */
+.lang-select { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 99px; background: var(--field); color: var(--text-2); font-weight: 600; font-size: 14px; }
+.lang-select .icon { width: 16px; height: 16px; }
+.lang-select select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; font: inherit; color: var(--text); outline: none; cursor: pointer; }

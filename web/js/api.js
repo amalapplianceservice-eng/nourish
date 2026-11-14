@@ -1,4 +1,5 @@
 // Network services: USDA FoodData Central search and Claude meal estimation.
+import { t, langInfo } from './i18n.js';
 
 // ---------- USDA FoodData Central ----------
 // ~400k branded US products plus generic foods. DEMO_KEY works out of the box (rate-limited);
@@ -19,13 +20,13 @@ function mapUSDA(f) {
   if (kcal100 == null || kcal100 < 0 || kcal100 > 950) return null;
 
   let grams = 100;
-  let label = '100 g';
+  let label = `100 ${t('u.g')}`;
   const unit = (f.servingSizeUnit || '').toLowerCase();
   if (f.dataType === 'Branded' && f.servingSize > 0 && f.servingSize < 2000 && /^(g|grm|ml|mlt)$/.test(unit)) {
     grams = f.servingSize;
     const u = unit.startsWith('m') ? 'ml' : 'g';
     const household = f.householdServingFullText?.trim();
-    label = household ? `${household} (${r1(grams)} ${u})` : `${r1(grams)} ${u}`;
+    label = household ? `${household} (${r1(grams)} ${t(`u.${u}`)})` : `${r1(grams)} ${t(`u.${u}`)}`;
   }
   const k = grams / 100;
   // Generic USDA entries often end with the brand in caps: "Yogurt, Greek, plain, CHOBANI".
@@ -107,7 +108,7 @@ async function lookupOFF(code) {
     id: `off-${p.code || code}`,
     name: sentenceCase(name),
     brand: (Array.isArray(p.brands) ? p.brands[0] : (p.brands || '').split(',')[0]).trim() || null,
-    servingLabel: useServing ? `${p.serving_size || `${r1(sq)} g`}` : '100 g',
+    servingLabel: useServing ? `${p.serving_size || `${r1(sq)} ${t('u.g')}`}` : `100 ${t('u.g')}`,
     servingGrams: grams,
     kcal: kcal100 * k,
     p: (num(n.proteins_100g) || 0) * k,
@@ -174,11 +175,11 @@ const SCHEMA = {
 };
 
 export async function estimateMeal({ text, imageBase64, apiKey }) {
-  if (!apiKey) throw new Error('Add your Anthropic API key to use AI estimates.');
+  if (!apiKey) throw new Error(t('err.noKey'));
 
   const content = [];
   if (imageBase64) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } });
-  content.push({ type: 'text', text: text.trim() || 'Estimate the meal in this photo.' });
+  content.push({ type: 'text', text: text.trim() || t('ai.photoOnly') });
 
   let res;
   try {
@@ -194,7 +195,7 @@ export async function estimateMeal({ text, imageBase64, apiKey }) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 16000,
-        system: SYSTEM_PROMPT,
+        system: `${SYSTEM_PROMPT}\n- Write meal_name, item names, portions and assumptions in ${langInfo().aiName}. Use metric units (g, ml) in portions unless the user used other units.`,
         // Low effort keeps estimates fast; thinking is adaptive (always on) for this model.
         output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
         // If a safety classifier declines, the API retries on a fallback model in the same call.
@@ -203,24 +204,24 @@ export async function estimateMeal({ text, imageBase64, apiKey }) {
       }),
     });
   } catch {
-    throw new Error("Couldn't reach the AI service. Check your connection.");
+    throw new Error(t('err.network'));
   }
 
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new Error('Your API key was rejected. Check it in Settings.');
-    if (res.status === 429) throw new Error('Too many requests right now. Try again in a moment.');
-    if (res.status >= 500) throw new Error('The AI service is busy. Try again in a few seconds.');
+    if (res.status === 401 || res.status === 403) throw new Error(t('err.badKey'));
+    if (res.status === 429) throw new Error(t('err.rate'));
+    if (res.status >= 500) throw new Error(t('err.busy'));
     const body = await res.json().catch(() => null);
-    throw new Error(body?.error?.message || `Request failed (${res.status}).`);
+    throw new Error(body?.error?.message || t('err.failed', { status: res.status }));
   }
 
   const data = await res.json();
-  if (data.stop_reason === 'refusal') throw new Error("The AI couldn't estimate this one. Try describing it differently.");
+  if (data.stop_reason === 'refusal') throw new Error(t('err.refusal'));
 
   // Structured output arrives as JSON text; skip thinking and fallback blocks.
   const out = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   let result;
-  try { result = JSON.parse(out); } catch { throw new Error('Got an unexpected response. Please try again.'); }
+  try { result = JSON.parse(out); } catch { throw new Error(t('err.unexpected')); }
 
   return {
     mealName: result.meal_name || 'Meal',

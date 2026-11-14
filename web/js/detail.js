@@ -1,15 +1,17 @@
 import { html, useState } from '../vendor/preact-htm.js';
 import { MEALS, mealById, addEntry, updateEntry, deleteEntry, entryAsItem, scale, kcal, grams, fmt, unitOf, todayKey, SOURCES } from './store.js';
 import { Icon, MacroDonut, Seg, toast } from './ui.js';
+import { t } from './i18n.js';
+import { localizeItem } from './foods.js';
 
 /** Pick amount + meal for a food and log it, or edit an existing diary entry. */
 export function FoodDetail({ mode, item: addItem, entry, day, meal: initialMeal, onBack, onDone }) {
   const editing = mode === 'edit';
-  const item = editing ? entryAsItem(entry) : addItem;
+  const item = localizeItem(editing ? entryAsItem(entry) : addItem);
   const unitWord = unitOf(item.servingLabel);
 
   // Foods measured "per 100 g" read more naturally by weight.
-  const per100 = !editing && item.servingGrams === 100 && /^100 (g|ml)$/.test(item.servingLabel);
+  const per100 = !editing && item.servingGrams === 100 && /^100 (g|ml|г|мл|克|毫升)$/.test(item.servingLabel);
   const [unit, setUnit] = useState((editing && entry.inGrams && entry.servingGrams) || per100 ? 'grams' : 'servings');
   const [amount, setAmount] = useState(() => {
     if (per100) return '100';
@@ -33,10 +35,10 @@ export function FoodDetail({ mode, item: addItem, entry, day, meal: initialMeal,
   const save = () => {
     if (editing) {
       updateEntry(entry.id, { servings, inGrams: unit === 'grams', meal });
-      toast('Saved');
+      toast(t('toast.saved'));
     } else {
       addEntry(item, { servings, inGrams: unit === 'grams', meal, day });
-      toast(`Added to ${mealById(meal).title}`);
+      toast(t('toast.addedTo', { meal: mealById(meal).title }));
     }
     onDone();
   };
@@ -45,12 +47,12 @@ export function FoodDetail({ mode, item: addItem, entry, day, meal: initialMeal,
     const id = entry.id;
     onDone();
     setTimeout(() => deleteEntry(id), 260); // let the sheet animate out first
-    toast('Removed');
+    toast(t('toast.removed'));
   };
 
   const logAgainToday = () => {
     addEntry(item, { servings: entry.servings, inGrams: entry.inGrams, meal: entry.meal, day: todayKey() });
-    toast('Logged again today');
+    toast(t('toast.loggedAgain'));
     onDone();
   };
 
@@ -58,10 +60,10 @@ export function FoodDetail({ mode, item: addItem, entry, day, meal: initialMeal,
     <div class="sheet-head">
       <div class="left">
         <button class="text-btn row" style="gap:2px" onClick=${onBack}>
-          ${editing ? 'Cancel' : html`<${Icon} name="chevron-left" /> Back`}
+          ${editing ? t('cancel') : html`<${Icon} name="chevron-left" /> ${t('back')}`}
         </button>
       </div>
-      <div class="title">${editing ? 'Edit entry' : ''}</div>
+      <div class="title">${editing ? t('detail.edit') : ''}</div>
       <div class="right"></div>
     </div>
 
@@ -75,39 +77,39 @@ export function FoodDetail({ mode, item: addItem, entry, day, meal: initialMeal,
       <section class="card pad-lg nutri">
         <${MacroDonut} n=${n}>
           <div class="bold num" style="font-size:24px">${kcal(n.kcal)}</div>
-          <div class="tiny muted">kcal</div>
+          <div class="tiny muted">${t('u.kcal')}</div>
         <//>
         <div class="grow">
-          ${[['Protein', n.p, 'var(--protein)'], ['Carbs', n.c, 'var(--carbs)'], ['Fat', n.f, 'var(--fat)']].map(([t, v, c]) => html`
+          ${[[t('m.protein'), n.p, 'var(--protein)'], [t('m.carbs'), n.c, 'var(--carbs)'], [t('m.fat'), n.f, 'var(--fat)']].map(([label, v, c]) => html`
             <div class="macro-line">
               <span class="dot" style=${`background:${c}`}></span>
-              <span class="muted grow">${t}</span>
-              <b class="num">${grams(v)} g</b>
+              <span class="muted grow">${label}</span>
+              <b class="num">${grams(v)} ${t('u.g')}</b>
             </div>`)}
         </div>
       </section>
 
       <section class="card stack" style="gap:14px">
-        <div class="card-title" style="margin:0">Amount</div>
+        <div class="card-title" style="margin:0">${t('detail.amount')}</div>
         <div class="amount-row">
-          <input class="field amount-input num" inputmode="decimal" value=${amount} aria-label="Amount"
+          <input class="field amount-input num" inputmode="decimal" value=${amount} aria-label=${t('detail.amount')}
             onInput=${(e) => setAmount(e.currentTarget.value)} onFocus=${(e) => e.currentTarget.select()} />
           ${item.servingGrams
             ? html`<div class="grow"><${Seg} value=${unit} onChange=${switchUnit}
-                options=${[{ value: 'servings', label: 'Servings' }, { value: 'grams', label: unitWord === 'ml' ? 'ml' : 'Grams' }]} /></div>`
-            : html`<span class="muted">servings</span>`}
+                options=${[{ value: 'servings', label: t('detail.servings') }, { value: 'grams', label: unitWord === 'ml' ? t('u.ml') : t('detail.grams') }]} /></div>`
+            : html`<span class="muted">${t('detail.servingsWord')}</span>`}
         </div>
         <div class="chips">
           ${quick.map((q) => html`
             <button class=${'chip' + (value === q ? ' on' : '')} onClick=${() => setAmount(String(q))}>
-              ${unit === 'grams' ? `${q} ${unitWord}` : `${q}×`}
+              ${unit === 'grams' ? `${q} ${t(`u.${unitWord}`)}` : `${q}×`}
             </button>`)}
         </div>
-        <div class="small muted">1 serving = ${item.servingLabel}</div>
+        <div class="small muted">${t('detail.oneServing', { label: item.servingLabel })}</div>
       </section>
 
       <section class="card">
-        <div class="card-title">Meal</div>
+        <div class="card-title">${t('meal')}</div>
         <div class="meal-grid">
           ${MEALS.map((m) => {
             const on = m.id === meal;
@@ -122,15 +124,15 @@ export function FoodDetail({ mode, item: addItem, entry, day, meal: initialMeal,
 
       ${editing && html`
         <div class="stack" style="gap:4px">
-          <button class="btn secondary" onClick=${logAgainToday}><${Icon} name="repeat" /> Log again today</button>
-          <button class="btn danger" onClick=${remove}><${Icon} name="trash" /> Remove from diary</button>
+          <button class="btn secondary" onClick=${logAgainToday}><${Icon} name="repeat" /> ${t('detail.logAgain')}</button>
+          <button class="btn danger" onClick=${remove}><${Icon} name="trash" /> ${t('detail.remove')}</button>
         </div>`}
     </div>
 
     <div class="sheet-footer">
       <button class="btn" disabled=${servings <= 0} onClick=${save}>
         <${Icon} name=${editing ? 'check' : 'plus'} />
-        ${editing ? 'Save changes' : `Add to ${mealById(meal).title}`}
+        ${editing ? t('detail.save') : t('detail.addTo', { meal: mealById(meal).title })}
       </button>
     </div>`;
 }

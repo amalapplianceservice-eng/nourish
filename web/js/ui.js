@@ -1,6 +1,7 @@
 // Shared UI pieces: icons, rings, bars, sheets, toasts.
 import { html, useState, useEffect, useRef, useLayoutEffect } from '../vendor/preact-htm.js';
 import { kcal, grams } from './store.js';
+import { t } from './i18n.js';
 
 // ---------- Icons (stroke icons, 24×24) ----------
 const PATHS = {
@@ -66,7 +67,7 @@ export function CalorieRing({ eaten, goal }) {
       </svg>
       <div class="ring-center">
         <div class="ring-value num">${kcal(Math.abs(remaining))}</div>
-        <div class="ring-label" style=${over ? 'color: var(--over)' : ''}>${over ? 'kcal over' : 'kcal left'}</div>
+        <div class="ring-label" style=${over ? 'color: var(--over)' : ''}>${over ? t('ring.over') : t('ring.left')}</div>
       </div>
     </div>`;
 }
@@ -79,7 +80,7 @@ export function MacroBar({ title, value, goal, color }) {
       <div class="bar" style=${`background: color-mix(in srgb, ${color} 18%, transparent)`}>
         <div style=${`width: ${pct}%; background: ${color}`}></div>
       </div>
-      <div class="macro-val num"><b>${grams(value)}</b><span class="muted"> / ${Math.round(goal)} g</span></div>
+      <div class="macro-val num"><b>${grams(value)}</b><span class="muted"> / ${Math.round(goal)} ${t('u.g')}</span></div>
     </div>`;
 }
 
@@ -107,9 +108,9 @@ export function MacroDonut({ n, size = 104, width = 10, children }) {
 export function Pills({ n }) {
   return html`
     <div class="pills num">
-      <span class="pill"><span class="dot" style="background: var(--protein)"></span>P ${grams(n.p)}g</span>
-      <span class="pill"><span class="dot" style="background: var(--carbs)"></span>C ${grams(n.c)}g</span>
-      <span class="pill"><span class="dot" style="background: var(--fat)"></span>F ${grams(n.f)}g</span>
+      <span class="pill"><span class="dot" style="background: var(--protein)"></span>${t('m.P')} ${grams(n.p)}${t('u.g')}</span>
+      <span class="pill"><span class="dot" style="background: var(--carbs)"></span>${t('m.C')} ${grams(n.c)}${t('u.g')}</span>
+      <span class="pill"><span class="dot" style="background: var(--fat)"></span>${t('m.F')} ${grams(n.f)}${t('u.g')}</span>
     </div>`;
 }
 
@@ -142,6 +143,7 @@ export function Wheel({ values, value, onChange, format = (v) => v, label }) {
   const timer = useRef();
 
   // Position on mount, and when the value changes from outside (not from our own scrolling).
+  useLayoutEffect(() => () => clearTimeout(timer.current), []);
   useLayoutEffect(() => {
     const i = nearest();
     if (Math.round(ref.current.scrollTop / ROW) !== i) ref.current.scrollTop = i * ROW;
@@ -149,13 +151,15 @@ export function Wheel({ values, value, onChange, format = (v) => v, label }) {
   }, [value, values.length]);
 
   const onScroll = () => {
-    const i = Math.max(0, Math.min(values.length - 1, Math.round(ref.current.scrollTop / ROW)));
+    const el = ref.current;
+    if (!el) return; // unmounting (e.g. switching units)
+    const i = Math.max(0, Math.min(values.length - 1, Math.round(el.scrollTop / ROW)));
     if (i !== active) { setActive(i); navigator.vibrate?.(3); }
     clearTimeout(timer.current);
     timer.current = setTimeout(() => { if (values[i] !== value) onChange(values[i]); }, 120);
   };
 
-  const pick = (i) => ref.current.scrollTo({ top: i * ROW, behavior: 'smooth' });
+  const pick = (i) => ref.current?.scrollTo({ top: i * ROW, behavior: 'smooth' });
 
   const onKeyDown = (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {

@@ -1,13 +1,15 @@
 // App state, persisted to localStorage on this device.
 import { useState, useEffect } from '../vendor/preact-htm.js';
+import { t } from './i18n.js';
 
 const KEY = 'nourish.v1';
 
+const meal = (id, emoji, tint) => ({ id, emoji, tint, get title() { return t(`meal.${id}`); } });
 export const MEALS = [
-  { id: 'breakfast', title: 'Breakfast', emoji: '🌅', tint: '#FF9E42' },
-  { id: 'lunch', title: 'Lunch', emoji: '☀️', tint: '#F5B921' },
-  { id: 'dinner', title: 'Dinner', emoji: '🌙', tint: '#7378F2' },
-  { id: 'snacks', title: 'Snacks', emoji: '🍎', tint: '#F26B8C' },
+  meal('breakfast', '🌅', '#FF9E42'),
+  meal('lunch', '☀️', '#F5B921'),
+  meal('dinner', '🌙', '#7378F2'),
+  meal('snacks', '🍎', '#F26B8C'),
 ];
 export const mealById = (id) => MEALS.find((m) => m.id === id) || MEALS[3];
 
@@ -25,7 +27,7 @@ const defaults = () => ({
   onboarded: false,
   goals: { calories: 2000, protein: 140, carbs: 220, fat: 65 },
   profile: { sex: 'female', age: 30, heightCm: 170, weightKg: 70, activity: 'light', goal: 'maintain', metric: usesMetricByDefault() },
-  settings: { anthropicKey: '', usdaKey: '' },
+  settings: { anthropicKey: '', usdaKey: '', lang: '' },
   entries: [],
   customFoods: [],
 });
@@ -85,17 +87,17 @@ export const sum = (list) => list.reduce((a, n) => ({ kcal: a.kcal + n.kcal, p: 
 export const entryNutrition = (e) => scale(e, e.servings);
 
 export const entryAsItem = (e) => ({
-  id: `recent-${e.name}-${e.servingLabel}`, name: e.name, brand: e.brand, servingLabel: e.servingLabel,
+  id: `recent-${e.en || e.name}-${e.servingEn || e.servingLabel}`, name: e.name, en: e.en, servingEn: e.servingEn, brand: e.brand, servingLabel: e.servingLabel,
   servingGrams: e.servingGrams, kcal: e.kcal, p: e.p, c: e.c, f: e.f, source: e.source,
 });
 
 export function amountLabel(e) {
-  if (e.inGrams && e.servingGrams) return `${fmt(e.servings * e.servingGrams, 0)} ${unitOf(e.servingLabel)}`;
+  if (e.inGrams && e.servingGrams) return `${fmt(e.servings * e.servingGrams, 0)} ${t(`u.${unitOf(e.servingLabel)}`)}`;
   if (e.servings === 1) return e.servingLabel;
   return `${fmt(e.servings, 2)} × ${e.servingLabel}`;
 }
 
-export const unitOf = (label = '') => (/\bml\b/i.test(label) ? 'ml' : 'g');
+export const unitOf = (label = '') => (/(\bml\b|мл|毫升)/i.test(label) ? 'ml' : 'g');
 
 export function fmt(n, digits = 1) {
   if (!isFinite(n)) return '0';
@@ -108,7 +110,7 @@ export const grams = (n) => (n < 10 ? fmt(n, 1) : String(Math.round(n)));
 // ---------- Actions ----------
 export function addEntry(item, { servings = 1, inGrams = false, meal, day }) {
   const entry = {
-    id: uid(), name: item.name, brand: item.brand || null, servingLabel: item.servingLabel,
+    id: uid(), name: item.name, en: item.en || null, servingEn: item.servingEn || null, brand: item.brand || null, servingLabel: item.servingLabel,
     servingGrams: item.servingGrams || null, servings, inGrams,
     kcal: item.kcal, p: item.p, c: item.c, f: item.f,
     meal, day, createdAt: Date.now(), source: item.source || 'custom',
@@ -127,10 +129,11 @@ export function addCustomFood(food) {
 }
 export const deleteCustomFood = (id) => setState((s) => ({ customFoods: s.customFoods.filter((f) => f.id !== id) }));
 
+const source = (id, icon) => ({ icon, get label() { return t(`src.${id}`); } });
 export const SOURCES = {
-  builtIn: { label: 'Nourish database', icon: 'leaf' },
-  usda: { label: 'USDA FoodData Central', icon: 'globe' },
-  openFoodFacts: { label: 'Open Food Facts', icon: 'globe' },
-  custom: { label: 'My food', icon: 'user' },
-  ai: { label: 'AI estimate', icon: 'sparkles' },
+  builtIn: source('builtIn', 'leaf'),
+  usda: source('usda', 'globe'),
+  openFoodFacts: source('openFoodFacts', 'globe'),
+  custom: source('custom', 'user'),
+  ai: source('ai', 'sparkles'),
 };

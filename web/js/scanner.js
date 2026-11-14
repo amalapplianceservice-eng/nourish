@@ -4,6 +4,7 @@ import { html, useState, useEffect, useRef } from '../vendor/preact-htm.js';
 import { getState } from './store.js';
 import { lookupBarcode } from './api.js';
 import { Icon } from './ui.js';
+import { t } from './i18n.js';
 
 const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'];
 let detectorPromise = null;
@@ -13,7 +14,7 @@ function loadScript(src) {
     const s = document.createElement('script');
     s.src = src;
     s.onload = resolve;
-    s.onerror = () => reject(new Error('Could not load the barcode reader.'));
+    s.onerror = () => reject(new Error(t('scan.loadError')));
     document.head.appendChild(s);
   });
 }
@@ -76,7 +77,7 @@ export function Scanner({ onFound, onNotFound, onClose }) {
       if (item) { stopCamera(); onFound(item); }
       else setStatus('notfound');
     } catch {
-      setMessage("Couldn't reach the food databases. Check your connection.");
+      setMessage(t('scan.offline'));
       setStatus('notfound');
     }
   };
@@ -153,15 +154,15 @@ export function Scanner({ onFound, onNotFound, onClose }) {
   };
 
   return html`
-    <div class="scanner" role="dialog" aria-label="Barcode scanner">
+    <div class="scanner" role="dialog" aria-label=${t('scan.title')}>
       <video ref=${videoRef} class="scanner-video" playsinline muted autoplay></video>
       <div class="scanner-shade"></div>
 
       <div class="scanner-top">
-        <button class="scanner-btn" aria-label="Close scanner" onClick=${close}><${Icon} name="x" /></button>
-        <div class="semi">Scan barcode</div>
+        <button class="scanner-btn" aria-label=${t('scan.close')} onClick=${close}><${Icon} name="x" /></button>
+        <div class="semi">${t('scan.title')}</div>
         ${torch !== null
-          ? html`<button class=${'scanner-btn' + (torch ? ' on' : '')} aria-label="Flashlight" onClick=${toggleTorch}><${Icon} name="flashlight" /></button>`
+          ? html`<button class=${'scanner-btn' + (torch ? ' on' : '')} aria-label=${t('scan.flash')} onClick=${toggleTorch}><${Icon} name="flashlight" /></button>`
           : html`<span style="width:44px"></span>`}
       </div>
 
@@ -172,34 +173,34 @@ export function Scanner({ onFound, onNotFound, onClose }) {
         </div>`}
 
       <div class="scanner-bottom">
-        ${status === 'starting' && html`<div class="scanner-msg"><span class="spinner"></span> Starting camera…</div>`}
-        ${status === 'scanning' && html`<div class="scanner-msg">Point at the barcode on the package</div>`}
-        ${status === 'looking' && html`<div class="scanner-msg"><span class="spinner"></span> Looking up ${code}…</div>`}
+        ${status === 'starting' && html`<div class="scanner-msg"><span class="spinner"></span> ${t('scan.starting')}</div>`}
+        ${status === 'scanning' && html`<div class="scanner-msg">${t('scan.point')}</div>`}
+        ${status === 'looking' && html`<div class="scanner-msg"><span class="spinner"></span> ${t('scan.looking', { code })}</div>`}
         ${status === 'error' && html`<div class="scanner-msg">${message}</div>`}
         ${status === 'denied' && html`
           <div class="scanner-card">
-            <div class="semi">Camera not available</div>
-            <div class="small muted">Allow camera access for this site in Safari settings, or type the barcode number below.</div>
+            <div class="semi">${t('scan.noCamera')}</div>
+            <div class="small muted">${t('scan.noCameraBody')}</div>
           </div>`}
         ${status === 'notfound' && html`
           <div class="scanner-card pop-in">
-            <div class="semi">${message || 'Product not found'}</div>
-            <div class="small muted">${message ? '' : `No nutrition data for ${code} yet. Add it once and it'll be found next time.`}</div>
+            <div class="semi">${message || t('scan.notFound')}</div>
+            <div class="small muted">${message ? '' : t('scan.notFoundBody', { code })}</div>
             <div class="row" style="margin-top:10px">
-              <button class="btn secondary" style="padding:12px" onClick=${resume}>Scan again</button>
-              <button class="btn" style="padding:12px" onClick=${() => { stopCamera(); onNotFound(code); }}>Add it</button>
+              <button class="btn secondary" style="padding:12px" onClick=${resume}>${t('scan.again')}</button>
+              <button class="btn" style="padding:12px" onClick=${() => { stopCamera(); onNotFound(code); }}>${t('scan.addIt')}</button>
             </div>
           </div>`}
 
         ${manual
           ? html`
             <form class="scanner-card manual" onSubmit=${submitManual}>
-              <input class="field num" inputmode="numeric" placeholder="Barcode number" value=${manualCode} autofocus
-                onInput=${(e) => setManualCode(e.currentTarget.value)} aria-label="Barcode number" />
-              <button class="chip on" type="submit" disabled=${manualCode.replace(/\D/g, '').length < 8}>Look up</button>
+              <input class="field num" inputmode="numeric" placeholder=${t('scan.number')} value=${manualCode} autofocus
+                onInput=${(e) => setManualCode(e.currentTarget.value)} aria-label=${t('scan.number')} />
+              <button class="chip on" type="submit" disabled=${manualCode.replace(/\D/g, '').length < 8}>${t('scan.lookup')}</button>
             </form>`
           : (status === 'scanning' || status === 'starting') && html`
-            <button class="scanner-link" onClick=${() => setManual(true)}>Type the number instead</button>`}
+            <button class="scanner-link" onClick=${() => setManual(true)}>${t('scan.type')}</button>`}
       </div>
     </div>`;
 }

@@ -1,6 +1,8 @@
 import { html, useState } from '../vendor/preact-htm.js';
 import { useStore, todayKey, addDays, parseDay, entryNutrition, sum, kcal, grams, scale, ZERO } from './store.js';
 import { Icon, MacroDonut, Seg } from './ui.js';
+import { t, locale } from './i18n.js';
+import { localizeItem } from './foods.js';
 
 function Tile({ icon, color, value, unit, label }) {
   return html`
@@ -25,20 +27,20 @@ function CalorieChart({ days, goal }) {
   for (let v = 0; v <= maxVal; v += step) ticks.push(v);
 
   return html`
-    <svg class="chart" viewBox=${`0 0 ${W} ${H}`} role="img" aria-label="Daily calories chart">
-      ${ticks.map((t) => html`
-        <line x1=${left} x2=${W} y1=${y(t)} y2=${y(t)} stroke="var(--sep)" stroke-width="1" />
-        <text x=${left - 6} y=${y(t) + 4} text-anchor="end">${t >= 1000 ? `${t / 1000}k` : t}</text>`)}
+    <svg class="chart" viewBox=${`0 0 ${W} ${H}`} role="img" aria-label=${t('progress.chart')}>
+      ${ticks.map((v) => html`
+        <line x1=${left} x2=${W} y1=${y(v)} y2=${y(v)} stroke="var(--sep)" stroke-width="1" />
+        <text x=${left - 6} y=${y(v) + 4} text-anchor="end">${v >= 1000 ? `${v / 1000}k` : v}</text>`)}
       ${days.map((d, i) => {
         const h = Math.max(0, y(0) - y(d.n.kcal));
         const x = left + slot * i + (slot - barW) / 2;
         const over = d.n.kcal > goal * 1.05;
         const label = days.length <= 7
-          ? parseDay(d.day).toLocaleDateString(undefined, { weekday: 'narrow' })
-          : (i % 7 === 0 ? parseDay(d.day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '');
+          ? parseDay(d.day).toLocaleDateString(locale(), { weekday: 'narrow' })
+          : (i % 7 === 0 ? parseDay(d.day).toLocaleDateString(locale(), { month: 'short', day: 'numeric' }) : '');
         return html`
           ${h > 0 && html`<rect x=${x} y=${y(d.n.kcal)} width=${barW} height=${h} rx=${Math.min(6, barW / 3)}
-            fill=${over ? 'var(--over)' : 'var(--accent)'}><title>${`${d.day}: ${kcal(d.n.kcal)} kcal`}</title></rect>`}
+            fill=${over ? 'var(--over)' : 'var(--accent)'}><title>${`${d.day}: ${kcal(d.n.kcal)} ${t('u.kcal')}`}</title></rect>`}
           ${label && html`<text x=${left + slot * i + slot / 2} y=${H - 5} text-anchor=${days.length <= 7 ? 'middle' : 'start'}>${label}</text>`}`;
       })}
       <line x1=${left} x2=${W} y1=${y(goal)} y2=${y(goal)} stroke="var(--text-2)" stroke-width="1.5" stroke-dasharray="5 4" />
@@ -70,42 +72,42 @@ export function Progress() {
 
   const counts = {};
   const inRange = new Set(days.map((d) => d.day));
-  s.entries.filter((e) => inRange.has(e.day)).forEach((e) => { counts[e.name] = (counts[e.name] || 0) + 1; });
+  s.entries.filter((e) => inRange.has(e.day)).map(localizeItem).forEach((e) => { counts[e.name] = (counts[e.name] || 0) + 1; });
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   const pk = avg.p * 4, ck = avg.c * 4, fk = avg.f * 9, tot = Math.max(pk + ck + fk, 1);
 
   return html`
     <main class="screen">
-      <h1 class="large-title">Progress</h1>
+      <h1 class="large-title">${t('tab.progress')}</h1>
       <div class="stack">
-        <${Seg} value=${range} onChange=${setRange} options=${[{ value: 7, label: '7 days' }, { value: 30, label: '30 days' }]} />
+        <${Seg} value=${range} onChange=${setRange} options=${[{ value: 7, label: t('progress.7') }, { value: 30, label: t('progress.30') }]} />
 
         <div class="tiles">
-          <${Tile} icon="flame" color="#FF9500" value=${kcal(avg.kcal)} unit="kcal" label="Daily average" />
-          <${Tile} icon="bolt" color="var(--accent)" value=${streak} unit=${streak === 1 ? 'day' : 'days'} label="Logging streak" />
-          <${Tile} icon="target" color="var(--fat)" value=${`${onTarget}/${logged.length}`} unit="days" label="On target" />
-          <${Tile} icon="pulse" color="var(--protein)" value=${grams(avg.p)} unit="g" label="Avg protein" />
+          <${Tile} icon="flame" color="#FF9500" value=${kcal(avg.kcal)} unit=${t('u.kcal')} label=${t('progress.avg')} />
+          <${Tile} icon="bolt" color="var(--accent)" value=${streak} unit=${t('u.days', { n: streak })} label=${t('progress.streak')} />
+          <${Tile} icon="target" color="var(--fat)" value=${`${onTarget}/${logged.length}`} unit=${t('u.days', { n: logged.length })} label=${t('progress.onTarget')} />
+          <${Tile} icon="pulse" color="var(--protein)" value=${grams(avg.p)} unit=${t('u.g')} label=${t('progress.avgProtein')} />
         </div>
 
         <section class="card">
           <div class="row" style="justify-content:space-between;margin-bottom:10px">
-            <div class="card-title" style="margin:0">Calories</div>
-            <div class="small muted row" style="gap:6px"><span style="width:14px;border-top:2px dashed var(--text-2)"></span>Goal ${goal}</div>
+            <div class="card-title" style="margin:0">${t('progress.calories')}</div>
+            <div class="small muted row" style="gap:6px"><span style="width:14px;border-top:2px dashed var(--text-2)"></span>${t('progress.goal', { n: goal })}</div>
           </div>
           <${CalorieChart} days=${days} goal=${goal} />
         </section>
 
         <section class="card">
-          <div class="card-title">Average macros</div>
+          <div class="card-title">${t('progress.macros')}</div>
           <div class="nutri">
             <${MacroDonut} n=${avg} size=${96} width=${14} />
             <div class="grow">
-              ${[['Protein', avg.p, pk, 'var(--protein)'], ['Carbs', avg.c, ck, 'var(--carbs)'], ['Fat', avg.f, fk, 'var(--fat)']].map(([t, g, k, c]) => html`
+              ${[[t('m.protein'), avg.p, pk, 'var(--protein)'], [t('m.carbs'), avg.c, ck, 'var(--carbs)'], [t('m.fat'), avg.f, fk, 'var(--fat)']].map(([label, g, k, c]) => html`
                 <div class="macro-line">
                   <span class="dot" style=${`background:${c}`}></span>
-                  <span class="muted grow">${t}</span>
-                  <b class="num">${grams(g)} g</b>
+                  <span class="muted grow">${label}</span>
+                  <b class="num">${grams(g)} ${t('u.g')}</b>
                   <span class="muted num" style="width:40px;text-align:right">${Math.round((k / tot) * 100)}%</span>
                 </div>`)}
             </div>
@@ -114,7 +116,7 @@ export function Progress() {
 
         ${top.length > 0 && html`
           <section class="card">
-            <div class="card-title">Most logged</div>
+            <div class="card-title">${t('progress.top')}</div>
             <div class="stack" style="gap:10px">
               ${top.map(([name, count], i) => html`
                 <div class="row">
@@ -124,7 +126,7 @@ export function Progress() {
                 </div>`)}
             </div>
           </section>`}
-        ${logged.length === 0 && html`<div class="center muted" style="padding:20px">Log a few meals and your trends will appear here.</div>`}
+        ${logged.length === 0 && html`<div class="center muted" style="padding:20px">${t('progress.empty')}</div>`}
       </div>
     </main>`;
 }
