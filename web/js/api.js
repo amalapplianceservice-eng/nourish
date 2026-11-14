@@ -66,6 +66,66 @@ export async function searchUSDA(query, apiKey, signal) {
     .filter((x) => x && !seen.has(x.name.toLowerCase() + (x.brand || '')) && seen.add(x.name.toLowerCase() + (x.brand || '')));
 }
 
+// ---------- Barcode lookup ----------
+// USDA branded data is preferred (reliable US serving sizes); Open Food Facts covers international products.
+
+const digitsOnly = (code) => String(code).replace(/\D/g, '').replace(/^0+/, '');
+
+async function lookupUSDA(code, apiKey) {
+  const url = new URL('https://api.nal.usda.gov/fdc/v1/foods/search');
+  url.searchParams.set('query', code);
+  url.searchParams.set('dataType', 'Branded');
+  url.searchParams.set('pageSize', '5');
+  url.searchParams.set('api_key', apiKey || 'DEMO_KEY');
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`USDA ${res.status}`);
+  const data = await res.json();
+  const match = (data.foods || []).find((f) => f.gtinUpc && digitsOnly(f.gtinUpc) === digitsOnly(code));
+  return match ? mapUSDA(match) : null;
+}
+
+async function lookupOFF(code) {
+  const fields = 'code,product_name,brands,nutriments,serving_size,serving_quantity';
+  const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${fields}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const p = data.product;
+  if (data.status !== 1 || !p) return null;
+  const n = p.nutriments || {};
+  const num = (v) => (v == null || v === '' ? null : Number(String(v).replace(',', '.')));
+  let kcal100 = num(n['energy-kcal_100g']);
+  if (kcal100 == null && num(n.energy_100g) != null) kcal100 = num(n.energy_100g) / 4.184;
+  const name = (p.product_name || '').trim();
+  if (!name || kcal100 == null || kcal100 > 950) return null;
+
+  // OFF serving data is crowd-sourced; ignore implausible values (e.g. "3g" for 3 cookies).
+  const sq = num(p.serving_quantity);
+  const useServing = sq && sq >= 5 && sq < 2000;
+  const grams = useServing ? sq : 100;
+  const k = grams / 100;
+  return {
+    id: `off-${p.code || code}`,
+    name: sentenceCase(name),
+    brand: (Array.isArray(p.brands) ? p.brands[0] : (p.brands || '').split(',')[0]).trim() || null,
+    servingLabel: useServing ? `${p.serving_size || `${r1(sq)} g`}` : '100 g',
+    servingGrams: grams,
+    kcal: kcal100 * k,
+    p: (num(n.proteins_100g) || 0) * k,
+    c: (num(n.carbohydrates_100g) || 0) * k,
+    f: (num(n.fat_100g) || 0) * k,
+    source: 'openFoodFacts',
+  };
+}
+
+/** Find a product by barcode. Resolves to a food item or null; throws only if every source failed to respond. */
+export async function lookupBarcode(code, usdaKey) {
+  const [usda, off] = await Promise.allSettled([lookupUSDA(code, usdaKey), lookupOFF(code)]);
+  const item = (usda.status === 'fulfilled' && usda.value) || (off.status === 'fulfilled' && off.value);
+  if (item) return { ...item, barcode: code };
+  if (usda.status === 'rejected' && off.status === 'rejected') throw new Error('offline');
+  return null;
+}
+
 // ---------- Claude meal estimation ----------
 // Called straight from the browser with the user's own key (stored only on this device).
 

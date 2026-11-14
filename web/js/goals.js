@@ -1,6 +1,6 @@
 import { html, useState } from '../vendor/preact-htm.js';
 import { useStore, setState } from './store.js';
-import { Icon, Seg } from './ui.js';
+import { Icon, Seg, Wheel, range } from './ui.js';
 
 const ACTIVITY = [
   { id: 'sedentary', title: 'Sedentary', sub: 'Desk job, little exercise', k: 1.2 },
@@ -28,15 +28,12 @@ export function calcTargets(p) {
   return { calories, protein, carbs, fat };
 }
 
-function Stepper({ value, onChange, step = 1, min, max, display }) {
-  const clamp = (v) => Math.min(max, Math.max(min, Math.round(v * 10) / 10));
-  return html`
-    <div class="stepper">
-      <button aria-label="Decrease" onClick=${() => onChange(clamp(value - step))}>−</button>
-      <span class="v num">${display ?? value}</span>
-      <button aria-label="Increase" onClick=${() => onChange(clamp(value + step))}>+</button>
-    </div>`;
-}
+const AGES = range(13, 100);
+const CM = range(120, 230);
+const KG = range(30, 250);
+const FEET = range(4, 7);
+const INCHES = range(0, 11);
+const LBS = range(66, 550);
 
 export function GoalSetup({ buttonTitle = 'Save goals', onSave }) {
   const s = useStore();
@@ -67,18 +64,38 @@ export function GoalSetup({ buttonTitle = 'Save goals', onSave }) {
             options=${[{ value: true, label: 'kg/cm' }, { value: false, label: 'lb/ft' }]} /></div>
         </div>
         <${Seg} value=${p.sex} onChange=${(v) => set({ sex: v })} options=${[{ value: 'female', label: 'Female' }, { value: 'male', label: 'Male' }]} />
-        <div class="row"><span class="grow muted">Age</span>
-          <${Stepper} value=${p.age} min=${13} max=${100} onChange=${(v) => set({ age: v })} display=${`${p.age} yrs`} /></div>
-        ${p.metric ? html`
-          <div class="row"><span class="grow muted">Height</span>
-            <${Stepper} value=${Math.round(p.heightCm)} min=${120} max=${230} onChange=${(v) => set({ heightCm: v })} display=${`${Math.round(p.heightCm)} cm`} /></div>
-          <div class="row"><span class="grow muted">Weight</span>
-            <${Stepper} value=${p.weightKg} step=${0.5} min=${30} max=${300} onChange=${(v) => set({ weightKg: v })} display=${`${p.weightKg} kg`} /></div>`
-        : html`
-          <div class="row"><span class="grow muted">Height</span>
-            <${Stepper} value=${inches} min=${48} max=${90} onChange=${(v) => set({ heightCm: v * 2.54 })} display=${`${Math.floor(inches / 12)}′ ${inches % 12}″`} /></div>
-          <div class="row"><span class="grow muted">Weight</span>
-            <${Stepper} value=${lb} min=${66} max=${660} onChange=${(v) => set({ weightKg: Math.round((v / 2.20462) * 10) / 10 })} display=${`${lb} lb`} /></div>`}
+        <div class="wheels" key=${p.metric ? 'metric' : 'imperial'}>
+          <div class="wheel-col">
+            <div class="wheel-label">Age</div>
+            <${Wheel} label="Age" values=${AGES} value=${p.age} onChange=${(v) => set({ age: v })} />
+          </div>
+          ${p.metric ? html`
+            <div class="wheel-col">
+              <div class="wheel-label">Height</div>
+              <${Wheel} label="Height in centimeters" values=${CM} value=${Math.round(p.heightCm)}
+                format=${(v) => `${v} cm`} onChange=${(v) => set({ heightCm: v })} />
+            </div>
+            <div class="wheel-col">
+              <div class="wheel-label">Weight</div>
+              <${Wheel} label="Weight in kilograms" values=${KG} value=${p.weightKg}
+                format=${(v) => `${v} kg`} onChange=${(v) => set({ weightKg: v })} />
+            </div>`
+          : html`
+            <div class="wheel-col" style="flex:1.3">
+              <div class="wheel-label">Height</div>
+              <div class="wheel-pair">
+                <${Wheel} label="Height feet" values=${FEET} value=${Math.floor(inches / 12)}
+                  format=${(v) => `${v}′`} onChange=${(v) => set({ heightCm: (v * 12 + (inches % 12)) * 2.54 })} />
+                <${Wheel} label="Height inches" values=${INCHES} value=${inches % 12}
+                  format=${(v) => `${v}″`} onChange=${(v) => set({ heightCm: (Math.floor(inches / 12) * 12 + v) * 2.54 })} />
+              </div>
+            </div>
+            <div class="wheel-col">
+              <div class="wheel-label">Weight</div>
+              <${Wheel} label="Weight in pounds" values=${LBS} value=${lb}
+                format=${(v) => `${v} lb`} onChange=${(v) => set({ weightKg: Math.round((v / 2.20462) * 10) / 10 })} />
+            </div>`}
+        </div>
       </section>
 
       <section class="card">

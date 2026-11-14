@@ -1,11 +1,11 @@
 // Offline support: cache the app shell; network requests to food/AI APIs are never cached.
-const CACHE = 'nourish-v1';
+const CACHE = 'nourish-v2';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
-  'vendor/preact-htm.js',
+  'vendor/preact-htm.js', 'vendor/barcode-detector.js', 'vendor/zxing_reader.wasm',
   'js/app.js', 'js/store.js', 'js/foods.js', 'js/foods-data.js', 'js/api.js', 'js/ui.js',
   'js/diary.js', 'js/add.js', 'js/detail.js', 'js/ai.js', 'js/create.js',
-  'js/progress.js', 'js/settings.js', 'js/goals.js',
+  'js/progress.js', 'js/settings.js', 'js/goals.js', 'js/scanner.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon.png',
 ];
 

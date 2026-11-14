@@ -1,5 +1,5 @@
 // Shared UI pieces: icons, rings, bars, sheets, toasts.
-import { html, useState, useEffect } from '../vendor/preact-htm.js';
+import { html, useState, useEffect, useRef, useLayoutEffect } from '../vendor/preact-htm.js';
 import { kcal, grams } from './store.js';
 
 // ---------- Icons (stroke icons, 24×24) ----------
@@ -35,6 +35,8 @@ const PATHS = {
   upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
   alert: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01',
   wifi: 'M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01',
+  barcode: 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10.5 8v8M14 8v8M17 8v8',
+  flashlight: 'M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12zM6 6h12M12 12v2',
 };
 
 export function Icon({ name, class: cls = '', style }) {
@@ -124,6 +126,56 @@ export function Toggle({ checked, onChange, label }) {
   return html`<input type="checkbox" class="toggle" aria-label=${label} checked=${checked}
     onChange=${(e) => onChange(e.currentTarget.checked)} />`;
 }
+
+// ---------- Scroll wheel picker (iOS-style) ----------
+const ROW = 40;
+
+/** Scroll or tap to choose a value. `values` is an array; `format` renders each one. */
+export function Wheel({ values, value, onChange, format = (v) => v, label }) {
+  const ref = useRef();
+  const nearest = () => {
+    let best = 0;
+    values.forEach((v, i) => { if (Math.abs(v - value) < Math.abs(values[best] - value)) best = i; });
+    return best;
+  };
+  const [active, setActive] = useState(nearest);
+  const timer = useRef();
+
+  // Position on mount, and when the value changes from outside (not from our own scrolling).
+  useLayoutEffect(() => {
+    const i = nearest();
+    if (Math.round(ref.current.scrollTop / ROW) !== i) ref.current.scrollTop = i * ROW;
+    setActive(i);
+  }, [value, values.length]);
+
+  const onScroll = () => {
+    const i = Math.max(0, Math.min(values.length - 1, Math.round(ref.current.scrollTop / ROW)));
+    if (i !== active) { setActive(i); navigator.vibrate?.(3); }
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => { if (values[i] !== value) onChange(values[i]); }, 120);
+  };
+
+  const pick = (i) => ref.current.scrollTo({ top: i * ROW, behavior: 'smooth' });
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      pick(Math.max(0, Math.min(values.length - 1, active + (e.key === 'ArrowDown' ? 1 : -1))));
+    }
+  };
+
+  return html`
+    <div class="wheel" role="listbox" aria-label=${label} tabindex="0" onKeyDown=${onKeyDown}>
+      <div class="wheel-band"></div>
+      <div class="wheel-scroll" ref=${ref} onScroll=${onScroll}>
+        ${values.map((v, i) => html`
+          <div key=${v} class=${'wheel-item num' + (i === active ? ' on' : '')} role="option" aria-selected=${i === active}
+            onClick=${() => pick(i)}>${format(v)}</div>`)}
+      </div>
+    </div>`;
+}
+
+export const range = (from, to, step = 1) => Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
 
 // ---------- Bottom sheet ----------
 /** Full-height bottom sheet. `render(close)` draws the content so it can animate itself closed. */

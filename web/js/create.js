@@ -6,7 +6,7 @@ const num = (s) => { const v = parseFloat(String(s).replace(',', '.')); return i
 const EMPTY = { name: '', brand: '', servingLabel: '1 serving', servingGrams: '', kcal: '', p: '', c: '', f: '' };
 
 /** Create your own food or recipe. Calories can be derived from macros. */
-export function CreateFood({ day, meal, onDone }) {
+export function CreateFood({ day, meal, onDone, barcode, onClearBarcode }) {
   const [form, setForm] = useState(EMPTY);
   const set = (k) => (e) => setForm({ ...form, [k]: e.currentTarget.value });
 
@@ -21,7 +21,9 @@ export function CreateFood({ day, meal, onDone }) {
       servingLabel: form.servingLabel.trim() || '1 serving',
       servingGrams: num(form.servingGrams),
       kcal: calories, p: num(form.p) || 0, c: num(form.c) || 0, f: num(form.f) || 0,
+      ...(barcode ? { barcode } : {}),
     });
+    onClearBarcode?.();
     if (andLog) {
       addEntry(food, { meal, day });
       toast(`Added to ${mealById(meal).title}`);
@@ -41,6 +43,14 @@ export function CreateFood({ day, meal, onDone }) {
 
   return html`
     <div class="sheet-body" style="padding-top:2px">
+      ${barcode && html`
+        <div class="card small pop-in" style="margin-top:4px">
+          <div class="row" style="justify-content:space-between">
+            <span class="barcode-tag"><${Icon} name="barcode" />${barcode}</span>
+            <button class="faint" aria-label="Remove barcode" onClick=${onClearBarcode}><${Icon} name="x" style="width:16px;height:16px" /></button>
+          </div>
+          <div class="muted" style="margin-top:8px">Copy the numbers from the nutrition label. Next time you scan this barcode, it'll come up instantly.</div>
+        </div>`}
       <div class="list-header" style="margin-top:4px">Food</div>
       <div class="form-list">
         <div class="form-row"><input class="full" placeholder="Name (e.g. Mom's lasagna)" value=${form.name} onInput=${set('name')} aria-label="Name" /></div>

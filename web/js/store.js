@@ -130,6 +130,7 @@ export const deleteCustomFood = (id) => setState((s) => ({ customFoods: s.custom
 export const SOURCES = {
   builtIn: { label: 'Nourish database', icon: 'leaf' },
   usda: { label: 'USDA FoodData Central', icon: 'globe' },
+  openFoodFacts: { label: 'Open Food Facts', icon: 'globe' },
   custom: { label: 'My food', icon: 'user' },
   ai: { label: 'AI estimate', icon: 'sparkles' },
 };

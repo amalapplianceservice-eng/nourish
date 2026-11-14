@@ -6,14 +6,21 @@ import { Icon, Seg, toast } from './ui.js';
 import { FoodDetail } from './detail.js';
 import { AIMeal } from './ai.js';
 import { CreateFood } from './create.js';
+import { Scanner } from './scanner.js';
 
 export function AddFood({ day, initialMeal, close }) {
   const [meal, setMeal] = useState(initialMeal);
   const [tab, setTab] = useState('search');
   const [detail, setDetail] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [newBarcode, setNewBarcode] = useState(null);
   const m = mealById(meal);
 
   return html`
+    ${scanning && html`
+      <${Scanner} onClose=${() => setScanning(false)}
+        onFound=${(item) => { setScanning(false); setDetail(item); }}
+        onNotFound=${(code) => { setScanning(false); setNewBarcode(code); setTab('create'); }} />`}
     ${detail && html`
       <${FoodDetail} mode="add" item=${detail} day=${day} meal=${meal}
         onBack=${() => setDetail(null)} onDone=${close} />`}
@@ -36,13 +43,13 @@ export function AddFood({ day, initialMeal, close }) {
           { value: 'create', label: 'Create' },
         ]} />
       </div>
-      ${tab === 'search' && html`<${FoodSearch} day=${day} meal=${meal} onPick=${setDetail} />`}
+      ${tab === 'search' && html`<${FoodSearch} day=${day} meal=${meal} onPick=${setDetail} onScan=${() => setScanning(true)} />`}
       ${tab === 'ai' && html`<${AIMeal} day=${day} meal=${meal} onDone=${close} />`}
-      ${tab === 'create' && html`<${CreateFood} day=${day} meal=${meal} onDone=${close} />`}
+      ${tab === 'create' && html`<${CreateFood} day=${day} meal=${meal} onDone=${close} barcode=${newBarcode} onClearBarcode=${() => setNewBarcode(null)} />`}
     </div>`;
 }
 
-function FoodSearch({ day, meal, onPick }) {
+function FoodSearch({ day, meal, onPick, onScan }) {
   const s = useStore();
   const [query, setQuery] = useState('');
   const [online, setOnline] = useState({ status: 'idle', items: [] });
@@ -102,13 +109,14 @@ function FoodSearch({ day, meal, onPick }) {
     ${footer && html`<div class="list-footer">${footer}</div>`}`;
 
   return html`
-    <div style="padding: 0 16px 4px">
-      <div class="search">
+    <div class="row" style="padding: 0 16px 4px; gap: 8px">
+      <div class="search grow">
         <${Icon} name="search" />
         <input type="search" placeholder="Search foods & brands" value=${query} autocomplete="off" autocorrect="off"
           enterkeyhint="search" onInput=${(e) => setQuery(e.currentTarget.value)} aria-label="Search foods" />
         ${query && html`<button class="faint" aria-label="Clear" onClick=${() => setQuery('')}><${Icon} name="x" style="width:16px;height:16px" /></button>`}
       </div>
+      <button class="scan-btn" aria-label="Scan a barcode" onClick=${onScan}><${Icon} name="barcode" /></button>
     </div>
     <div class="sheet-body" style="padding-top:0">
       ${!q && html`

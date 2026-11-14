@@ -299,6 +299,62 @@ textarea.field { resize: none; min-height: 112px; line-height: 1.4; }
 .stepper button { width: 38px; height: 34px; font-size: 20px; font-weight: 600; }
 .stepper .v { min-width: 66px; text-align: center; font-weight: 700; }
 
+/* ---------- Wheel picker ---------- */
+.wheels { display: flex; gap: 6px; }
+.wheel-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.wheel-col .wheel-label { font-size: 12px; font-weight: 700; color: var(--text-2); text-align: center; text-transform: uppercase; letter-spacing: .03em; }
+.wheel-pair { display: flex; gap: 2px; }
+.wheel-pair .wheel { flex: 1; }
+.wheel {
+  position: relative; height: 200px; outline: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent);
+}
+.wheel:focus-visible .wheel-band { box-shadow: 0 0 0 2px var(--accent); }
+.wheel-band { position: absolute; left: 0; right: 0; top: 80px; height: 40px; border-radius: 10px; background: var(--field); pointer-events: none; }
+.wheel-scroll {
+  position: relative; height: 100%; overflow-y: auto; padding: 80px 0;
+  scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.wheel-scroll::-webkit-scrollbar { display: none; }
+.wheel-item {
+  height: 40px; display: flex; align-items: center; justify-content: center;
+  scroll-snap-align: center; font-size: 19px; font-weight: 500; color: var(--text-3);
+  transition: color .15s, font-size .15s; cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+.wheel-item.on { color: var(--text); font-weight: 750; font-size: 22px; }
+
+/* ---------- Barcode scanner ---------- */
+.scan-btn { width: 42px; height: 42px; flex: none; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.scan-btn .icon { width: 22px; height: 22px; }
+.scanner { position: fixed; inset: 0; z-index: 70; background: #000; color: #fff; animation: fade-in .2s ease; }
+.scanner-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scanner-top { position: absolute; top: 0; left: 0; right: 0; padding: calc(var(--safe-top) + 10px) 16px 10px; display: flex; align-items: center; justify-content: space-between; z-index: 2; font-size: 17px; }
+.scanner-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #fff; display: grid; place-items: center; }
+.scanner-btn.on { background: #fff; color: #000; }
+.viewfinder {
+  position: absolute; left: 50%; top: 48%; width: min(82vw, 400px); height: min(48vw, 230px);
+  transform: translate(-50%, -50%); border-radius: 18px;
+  box-shadow: 0 0 0 100vmax rgba(0,0,0,.5); transition: box-shadow .3s;
+}
+.viewfinder .corner { position: absolute; width: 30px; height: 30px; border: 4px solid #fff; transition: border-color .2s; }
+.viewfinder.found .corner { border-color: var(--accent); }
+.corner.tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 18px; }
+.corner.tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 18px; }
+.corner.bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 18px; }
+.corner.br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 18px; }
+.scan-line { position: absolute; left: 8%; right: 8%; height: 2px; top: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); border-radius: 2px; animation: scan 1.6s ease-in-out infinite alternate; }
+@keyframes scan { from { top: 18%; } to { top: 82%; } }
+.scanner-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(var(--safe-bottom) + 24px); display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 2; }
+.scanner-msg { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; background: rgba(0,0,0,.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 10px 16px; border-radius: 99px; }
+.scanner-card { width: 100%; max-width: 420px; background: var(--card); color: var(--text); border-radius: 18px; padding: 16px; }
+.scanner-card.manual { display: flex; gap: 8px; align-items: center; padding: 10px; }
+.scanner-card .btn { font-size: 16px; }
+.scanner-link { color: #fff; font-weight: 600; font-size: 15px; text-decoration: underline; text-underline-offset: 3px; opacity: .9; padding: 6px; }
+.barcode-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-2); background: var(--field); padding: 6px 10px; border-radius: 99px; }
+.barcode-tag .icon { width: 15px; height: 15px; }
+
 /* ---------- Toast & install banner ---------- */
 .toast {
   position: fixed; z-index: 60; left: 0; right: 0; margin: 0 auto; width: fit-content;
